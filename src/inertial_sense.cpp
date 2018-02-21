@@ -108,6 +108,7 @@ InertialSenseROS::InertialSenseROS() :
   if (INS_.stream_on)
   {
     INS_.pub = nh_.advertise<nav_msgs::Odometry>("ins", 1);
+    INS_.pub2 = nh_.advertise<geometry_msgs::Vector3>("ins/lla", 1);
     request_data(DID_INS_1, INS_.stream_rate);
     request_data(DID_INS_2, INS_.stream_rate);
     request_data(DID_DUAL_IMU, INS_.stream_rate);
@@ -201,6 +202,12 @@ void InertialSenseROS::INS1_callback(const ins_1_t * const msg)
   odom_msg.pose.pose.position.x = msg->ned[0];
   odom_msg.pose.pose.position.y = msg->ned[1];
   odom_msg.pose.pose.position.z = msg->ned[2];
+
+  geometry_msgs::Vector3 lla_msg;
+  lla_msg.x = msg->lla[0];
+  lla_msg.y = msg->lla[1];
+  lla_msg.z = msg->lla[2];
+  INS_.pub2.publish(lla_msg);
 }
 
 
