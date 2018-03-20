@@ -79,6 +79,8 @@ private:
   ros_stream_t dt_vel_;
   void preint_IMU_callback(const preintegrated_imu_t * const msg);
   
+  ros_stream_t  RTK_correction_;
+  
   ros::ServiceServer mag_cal_srv_;
   ros::ServiceServer multi_mag_cal_srv_;
   bool perform_mag_cal_srv_callback(std_srvs::Trigger::Request & req, std_srvs::Trigger::Response & res);
