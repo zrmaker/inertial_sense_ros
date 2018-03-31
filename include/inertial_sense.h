@@ -27,6 +27,16 @@
 
 class InertialSenseROS //: SerialListener
 {
+  typedef enum
+  {
+    NMEA_GPGGA = 0x01,
+    NMEA_GPGLL = 0x02,
+    NMEA_GPGSA = 0x04,
+    NMEA_GPRMC = 0x08,
+    NMEA_SER0 = 0x01,
+    NMEA_SER1 = 0x02
+  } NMEA_message_config_t;
+      
 public:
   InertialSenseROS();
   void callback(p_data_t* data);
@@ -34,28 +44,31 @@ public:
 
 private:
   
+  void initialize_uINS();
   template<typename T> void set_vector_flash_config(std::string param_name, uint32_t size, uint32_t offset);
   template <typename T>  void set_flash_config(std::string param_name, uint32_t offset, T def);
+  void get_flash_config();
+  void reset_device();
+  void flash_config_callback(const nvm_flash_cfg_t* const msg);
   // Serial Port Configuration
   std::string port_;
   int baudrate_;
   
   // Time sync variables
-  ros::Duration INS_local_offset_; 
-  double GPS_towOffset_; // The offset between GPS time-of-week and local time on the uINS 
-  uint64_t GPS_week_; 
+  double INS_local_offset_ = 0.0;
+  bool got_first_message_ = false;
+  double GPS_towOffset_ = 0; // The offset between GPS time-of-week and local time on the uINS 
+  uint64_t GPS_week_ = 0;
 
   std::string frame_id_;
 
   // ROS Stream handling
   typedef struct
   {
-    int stream_rate;
+    bool enabled;
     ros::Publisher pub;
     ros::Publisher pub2;
   } ros_stream_t;
-
-  void request_data(uint32_t did, float update_rate);
 
   ros_stream_t INS_;
   void INS1_callback(const ins_1_t* const msg);
@@ -102,6 +115,9 @@ private:
   is_comm_instance_t comm_;
   uint8_t message_buffer_[BUFFER_SIZE];
   serial_port_t serial_;
+  bool got_flash_config = false;
+  nvm_flash_cfg_t flash_; // local copy of flash config
 
 //  InertialSense inertialSenseInterface_;
 };
+
