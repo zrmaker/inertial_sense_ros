@@ -141,17 +141,20 @@ InertialSenseROS::InertialSenseROS() :
   /////////////////////////////////////////////////////////
   /// RTK Configuration
   /////////////////////////////////////////////////////////
-  bool RTK_rover = nh_private_.param<bool>("RTK_rover", false);
-  bool RTK_base = nh_private_.param<bool>("RTK_base", false);
+  bool RTK_rover, RTK_base;
+  nh_private_.param<bool>("RTK_rover", RTK_rover, false);
+  nh_private_.param<bool>("RTK_base", RTK_base, false);
   ROS_ERROR_COND(RTK_rover && RTK_base, "unable to configure uINS to be both RTK rover and base - default to rover");
   if (RTK_rover)
   {
+    ROS_INFO("InertialSense: Configured as RTK Rover");
     RTK_state_ = RTK_ROVER;
     set_flash_config(offsetof(nvm_flash_cfg_t, sysCfgBits), SYS_CFG_BITS_RTK_ROVER);
     RTK_sub_ = nh_.subscribe("RTK", 10, &InertialSenseROS::RTKCorrection_callback, this);
   }
   else if (RTK_base)
   {
+    ROS_INFO("InertialSense: Configured as RTK Base");
     RTK_state_ = RTK_BASE;
     set_flash_config(offsetof(nvm_flash_cfg_t, sysCfgBits), SYS_CFG_BITS_ENABLE_COM_MANAGER_PASS_THROUGH_UBLOX_SERIAL_0);
     RTK_pub_ = nh_.advertise<inertial_sense::RTKCorrection>("RTK", 10);
@@ -395,6 +398,9 @@ void InertialSenseROS::update()
       break;
     case EXTERNAL_DATA_ID_UBLOX:
       ublox_callback(message_buffer_);
+      break;
+    default:
+      ROS_INFO("Unhandled IS message %d", message_type);
       break;
     }
   }
