@@ -43,6 +43,10 @@ If GPS is available, all header timestamps are calculated with respect to the GP
 
 In an ideal setting, there should be no jump in timestamps when GPS is first acquired, because the timestamps should be identical, however, due to inaccuracies in system time, there will likely be a small jump in message timestamps after the first GPS fix.
 
+## Using RTK
+
+RTK (Real-Time Kinematic) GPS is a technology which requires two uINS units.  One of these units is configured as the "base" while the other is configured as a "rover".  By passing observation data from the base to the rover, ionosphere and tropospheric errors can be nearly elminated from GPS measurements, resulting in a tremendous increase in GPS precision.  For best results, the base should remain stationary.  Upon powering up the system, the rover should also remain stationary until the GPS fix type (`/gps/fix_type`) is `GPS_STATUS_FIX_STATUS_RTK_FIX` (`0x0C00`).  After this point, the rover can operate normally, but will be benefitted by the base station corrections. 
+
 ## Topics
 
 Topics are enabled and disabled using parameters.  By default, only the `ins/` topic is published to save processor time in serializing unecessary messages.

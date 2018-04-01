@@ -333,7 +333,7 @@ void InertialSenseROS::GPS_callback(const gps_nav_t * const msg)
     uint64_t nsec = (msg->timeOfWeekMs/1e3 - floor(msg->timeOfWeekMs/1e3))*1e9;
     GPS_week_seconds = msg->week*7*24*3600;
     gps_msg.header.stamp = ros::Time(seconds, nsec);
-    gps_msg.fix_type = msg->status & GPS_STATUS_FIX_FLAGS_MASK;
+    gps_msg.fix_type = msg->status & GPS_STATUS_FIX_STATUS_MASK;
     gps_msg.header.frame_id =frame_id_;
     gps_msg.num_sat = (uint8_t)(msg->status & GPS_STATUS_NUM_SATS_USED_MASK);
     gps_msg.cno = msg->cnoMean;
@@ -396,7 +396,7 @@ void InertialSenseROS::update()
     case DID_PREINTEGRATED_IMU:
       preint_IMU_callback((preintegrated_imu_t*) message_buffer_);
       break;
-    case EXTERNAL_DATA_ID_UBLOX:
+    case _DID_EXTERNAL:
       ublox_callback(message_buffer_);
       break;
     default:
@@ -541,15 +541,17 @@ void InertialSenseROS::reset_device()
 void InertialSenseROS::ublox_callback(uint8_t *buffer)
 {
   // Collect the length out of the array, but also include 6 bytes for the UBLOX message header
-  uint32_t len = (buffer[4] << 8 | buffer[5]) + 6;
+  uint32_t len = (buffer[4] | buffer[5] << 8) + 6;
   
   inertial_sense::RTKCorrection msg;
+  msg.correction_type = inertial_sense::RTKCorrection::RTK_CORRECTION_TYPE_UBLOX;
   msg.data.resize(len);
   // copy the data buffer into the message
   for (int i = 0; i < len; i++)
   {
     msg.data[i] = buffer[i];
   } 
+  RTK_pub_.publish(msg);
 }
 
 void InertialSenseROS::RTKCorrection_callback(const inertial_sense::RTKCorrectionConstPtr &msg)
