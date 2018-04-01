@@ -15,6 +15,7 @@
 #include "inertial_sense/GPS.h"
 #include "inertial_sense/GPSInfo.h"
 #include "inertial_sense/PreIntIMU.h"
+#include "inertial_sense/RTKCorrection.h"
 #include "nav_msgs/Odometry.h"
 #include "std_srvs/Trigger.h"
 
@@ -47,9 +48,11 @@ private:
   void initialize_uINS();
   template<typename T> void set_vector_flash_config(std::string param_name, uint32_t size, uint32_t offset);
   template <typename T>  void set_flash_config(std::string param_name, uint32_t offset, T def);
+  template <typename T>  void set_flash_config(uint32_t offset, T value);
   void get_flash_config();
   void reset_device();
   void flash_config_callback(const nvm_flash_cfg_t* const msg);
+  void ublox_callback(uint8_t *buffer);
   // Serial Port Configuration
   std::string port_;
   int baudrate_;
@@ -92,7 +95,16 @@ private:
   ros_stream_t dt_vel_;
   void preint_IMU_callback(const preintegrated_imu_t * const msg);
   
-  ros_stream_t  RTK_correction_;
+  typedef enum
+  {
+    RTK_NONE,
+    RTK_ROVER,
+    RTK_BASE
+  } rtk_state_t;
+  rtk_state_t RTK_state_ = RTK_NONE;
+  ros::Subscriber RTK_sub_;
+  ros::Publisher RTK_pub_;
+  void RTKCorrection_callback(const inertial_sense::RTKCorrectionConstPtr& msg);
   
   ros::ServiceServer mag_cal_srv_;
   ros::ServiceServer multi_mag_cal_srv_;

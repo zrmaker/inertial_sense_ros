@@ -19,6 +19,7 @@ add_message_files(
   GPS.msg
   GPSInfo.msg
   PreIntIMU.msg
+  RTKCorrection.msg
 )
 
 generate_messages(

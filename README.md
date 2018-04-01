@@ -60,6 +60,8 @@ Topics are enabled and disabled using parameters.  By default, only the `ins/` t
     - Raw barometer measurements in kPa
 - `preint_imu` (inertial_sense/DThetaVel)
     - preintegrated coning and sculling integrals of IMU measurements
+- `RTK` (inertial_sense/RTKCorrection)
+    - RTK correction data (only published from a uINS configured as an RTK base station)
 
 ## Parameters
 
@@ -112,6 +114,12 @@ Topics are enabled and disabled using parameters.  By default, only the `ins/` t
        - 7 = airborne 2G
        - 8 = airborne 4G
        - 9 = wrist
+
+**RTK Configuration**
+* `~RTK_base` (bool, default: false)
+    - Configures the uINS as an RTK base station - This will cause the uINS to publish RTK corrections on the `RTK` topic for an RTK rover on the same ROS network.
+* `~RTK_rover` (bool, default: true)
+    - Configures the uINS as an RTK rover - This will cause the ROS node to subscribe to and use RTK corrections on the `RKT` topic.
 
 **ASCII Output Configuration**
 * `~ser1_baud_rate` (int, default: 115200)

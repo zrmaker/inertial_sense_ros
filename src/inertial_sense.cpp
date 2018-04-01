@@ -139,6 +139,25 @@ InertialSenseROS::InertialSenseROS() :
   serialPortWrite(&serial_, message_buffer_, messageSize);
   
   /////////////////////////////////////////////////////////
+  /// RTK Configuration
+  /////////////////////////////////////////////////////////
+  bool RTK_rover = nh_private_.param<bool>("RTK_rover", false);
+  bool RTK_base = nh_private_.param<bool>("RTK_base", false);
+  ROS_ERROR_COND(RTK_rover && RTK_base, "unable to configure uINS to be both RTK rover and base - default to rover");
+  if (RTK_rover)
+  {
+    RTK_state_ = RTK_ROVER;
+    set_flash_config(offsetof(nvm_flash_cfg_t, sysCfgBits), SYS_CFG_BITS_RTK_ROVER);
+    RTK_sub_ = nh_.subscribe("RTK", 10, &InertialSenseROS::RTKCorrection_callback, this);
+  }
+  else if (RTK_base)
+  {
+    RTK_state_ = RTK_BASE;
+    set_flash_config(offsetof(nvm_flash_cfg_t, sysCfgBits), SYS_CFG_BITS_ENABLE_COM_MANAGER_PASS_THROUGH_UBLOX_SERIAL_0);
+    RTK_pub_ = nh_.advertise<inertial_sense::RTKCorrection>("RTK", 10);
+  }
+  
+  /////////////////////////////////////////////////////////
   /// ASCII OUTPUT CONFIGURATION
   /////////////////////////////////////////////////////////
  
@@ -177,6 +196,13 @@ void InertialSenseROS::set_flash_config(std::string param_name, uint32_t offset,
   T tmp;
   nh_private_.param<T>(param_name, tmp, def);
   int messageSize = is_comm_set_data(&comm_, DID_FLASH_CONFIG, offset, sizeof(T), &tmp);
+  serialPortWrite(&serial_, message_buffer_, messageSize);
+}
+
+template <typename T>
+void InertialSenseROS::set_flash_config(uint32_t offset, T value)
+{
+  int messageSize = is_comm_set_data(&comm_, DID_FLASH_CONFIG, offset, sizeof(T), &value);
   serialPortWrite(&serial_, message_buffer_, messageSize);
 }
 
@@ -346,32 +372,29 @@ void InertialSenseROS::update()
     case DID_INS_2:
       INS2_callback((ins_2_t*) message_buffer_);
       break;
-
     case DID_DUAL_IMU:
       IMU_callback((dual_imu_t*) message_buffer_);
       break;
-
     case DID_GPS_NAV:
       GPS_callback((gps_nav_t*) message_buffer_);
       break;
-
     case DID_GPS1_SAT:
       GPS_Info_callback((gps_sat_t*) message_buffer_);
       break;
-
     case DID_MAGNETOMETER_1:
       mag_callback((magnetometer_t*) message_buffer_, 1);
       break;
     case DID_MAGNETOMETER_2:
       mag_callback((magnetometer_t*) message_buffer_, 2);
       break;
-
     case DID_BAROMETER:
       baro_callback((barometer_t*) message_buffer_);
       break;
-
     case DID_PREINTEGRATED_IMU:
       preint_IMU_callback((preintegrated_imu_t*) message_buffer_);
+      break;
+    case EXTERNAL_DATA_ID_UBLOX:
+      ublox_callback(message_buffer_);
       break;
     }
   }
@@ -507,6 +530,31 @@ void InertialSenseROS::reset_device()
   int messageSize = is_comm_set_data(&comm_, DID_CONFIG, offsetof(config_t, system), sizeof(uint32_t), &reset_command);
   serialPortWrite(&serial_, message_buffer_, messageSize);
   sleep(3);
+}
+
+void InertialSenseROS::ublox_callback(uint8_t *buffer)
+{
+  // Collect the length out of the array, but also include 6 bytes for the UBLOX message header
+  uint32_t len = (buffer[4] << 8 | buffer[5]) + 6;
+  
+  inertial_sense::RTKCorrection msg;
+  msg.data.resize(len);
+  // copy the data buffer into the message
+  for (int i = 0; i < len; i++)
+  {
+    msg.data[i] = buffer[i];
+  } 
+}
+
+void InertialSenseROS::RTKCorrection_callback(const inertial_sense::RTKCorrectionConstPtr &msg)
+{
+  uint32_t len = (msg->data[4] << 8 | msg->data[5]) + 6;
+  // copy the data to a local buffer
+  for (int i =0; i < len; i++)
+  {
+    message_buffer_[i] = msg->data[i];
+  }
+  serialPortWrite(&serial_, message_buffer_, len);
 }
 
 
