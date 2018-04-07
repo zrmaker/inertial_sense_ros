@@ -24,4 +24,7 @@ float32 hAcc							# horizontal accuracy
 float32 vAcc							# vertical accuracy
 float32 sAcc							# speed accuracy (m/s)
 float32 pDop							# Position Dilution of Precision (m)	
+float32 differentialAge					# Time since last base station update (s)
+float32 arRatio							# Ambiguity Resolution Ratio Factor
+float32 distanceToBase					# Distance to base station (m)
 

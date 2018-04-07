@@ -72,6 +72,28 @@ InertialSenseROS::InertialSenseROS() :
   set_flash_config<float>("declination", offsetof(nvm_flash_cfg_t, magDeclination), 0.20007290992f);
   set_flash_config<int>("dynamic_model", offsetof(nvm_flash_cfg_t, insDynModel), 8);
   set_flash_config<int>("ser1_baud_rate", offsetof(nvm_flash_cfg_t, ser1BaudRate), 115200);
+  
+  /////////////////////////////////////////////////////////
+  /// RTK Configuration
+  /////////////////////////////////////////////////////////
+  bool RTK_rover, RTK_base;
+  nh_private_.param<bool>("RTK_rover", RTK_rover, false);
+  nh_private_.param<bool>("RTK_base", RTK_base, false);
+  ROS_ERROR_COND(RTK_rover && RTK_base, "unable to configure uINS to be both RTK rover and base - default to rover");
+  if (RTK_rover)
+  {
+    ROS_INFO("InertialSense: Configured as RTK Rover");
+    RTK_state_ = RTK_ROVER;
+    set_flash_config(offsetof(nvm_flash_cfg_t, sysCfgBits), SYS_CFG_BITS_RTK_ROVER);
+    RTK_sub_ = nh_.subscribe("RTK", 10, &InertialSenseROS::RTKCorrection_callback, this);
+  }
+  else if (RTK_base)
+  {
+    ROS_INFO("InertialSense: Configured as RTK Base");
+    RTK_state_ = RTK_BASE;
+    set_flash_config(offsetof(nvm_flash_cfg_t, sysCfgBits), SYS_CFG_BITS_ENABLE_COM_MANAGER_PASS_THROUGH_UBLOX_SERIAL_0);
+    RTK_pub_ = nh_.advertise<inertial_sense::RTKCorrection>("RTK", 10);
+  }
 
 
   /////////////////////////////////////////////////////////
@@ -135,30 +157,21 @@ InertialSenseROS::InertialSenseROS() :
     rmcBits |= RMC_BITS_PREINTEGRATED_IMU;
   }
   
+  // Set up RTK information streams
+  nh_private_.param<bool>("stream_RTK_info", RTK_info_.enabled, false);
+  if (RTK_state_ == RTK_ROVER && RTK_info_.enabled)
+  {
+    RTK_info_.pub = nh_.advertise<inertial_sense::RTKInfo>("RTK/info", 1);
+    messageSize = is_comm_get_data(&comm_, DID_GPS_RTK_MISC, 0, 0, 10);
+    rmcBits |= RMC_BITS_GPS_RTK_MISC;
+    rmcBits |= RMC_BITS_GPS_RTK_NAV;
+    rmcBits |= RMC_BITS_PRESET;
+    serialPortWrite(&serial_, message_buffer_, messageSize);
+  }
+  
   messageSize = is_comm_get_data_rmc(&comm_, rmcBits);
   serialPortWrite(&serial_, message_buffer_, messageSize);
-  
-  /////////////////////////////////////////////////////////
-  /// RTK Configuration
-  /////////////////////////////////////////////////////////
-  bool RTK_rover, RTK_base;
-  nh_private_.param<bool>("RTK_rover", RTK_rover, false);
-  nh_private_.param<bool>("RTK_base", RTK_base, false);
-  ROS_ERROR_COND(RTK_rover && RTK_base, "unable to configure uINS to be both RTK rover and base - default to rover");
-  if (RTK_rover)
-  {
-    ROS_INFO("InertialSense: Configured as RTK Rover");
-    RTK_state_ = RTK_ROVER;
-    set_flash_config(offsetof(nvm_flash_cfg_t, sysCfgBits), SYS_CFG_BITS_RTK_ROVER);
-    RTK_sub_ = nh_.subscribe("RTK", 10, &InertialSenseROS::RTKCorrection_callback, this);
-  }
-  else if (RTK_base)
-  {
-    ROS_INFO("InertialSense: Configured as RTK Base");
-    RTK_state_ = RTK_BASE;
-    set_flash_config(offsetof(nvm_flash_cfg_t, sysCfgBits), SYS_CFG_BITS_ENABLE_COM_MANAGER_PASS_THROUGH_UBLOX_SERIAL_0);
-    RTK_pub_ = nh_.advertise<inertial_sense::RTKCorrection>("RTK", 10);
-  }
+
   
   /////////////////////////////////////////////////////////
   /// ASCII OUTPUT CONFIGURATION
@@ -396,6 +409,9 @@ void InertialSenseROS::update()
     case DID_PREINTEGRATED_IMU:
       preint_IMU_callback((preintegrated_imu_t*) message_buffer_);
       break;
+    case DID_GPS_RTK_MISC:
+      RTK_MISC_callback((gps_rtk_misc_t*) message_buffer_);
+      break;
     case _DID_EXTERNAL:
       ublox_callback(message_buffer_);
       break;
@@ -404,6 +420,44 @@ void InertialSenseROS::update()
       break;
     }
   }
+}
+
+void InertialSenseROS::RTK_MISC_callback(const gps_rtk_misc_t * const msg)
+{
+  if (RTK_info_.enabled)
+  {
+    inertial_sense::RTKInfo rtk_info_msg;
+    uint64_t seconds = UNIX_TO_GPS_OFFSET + msg->week*7*24*3600 + floor(msg->timeOfWeekMs/1e3);
+    uint64_t nsec = (msg->timeOfWeekMs - floor(msg->timeOfWeekMs))*1e6;
+    
+    rtk_info_msg.header.stamp = ros::Time(seconds, nsec);
+    rtk_info_msg.cycle_slip_count = msg->cycleSlipCount;
+    rtk_info_msg.BaseLLA[0] = msg->baseLla[0];
+    rtk_info_msg.BaseLLA[1] = msg->baseLla[1];
+    rtk_info_msg.BaseLLA[2] = msg->baseLla[2];
+    rtk_info_msg.baseObs = msg->baseGpsObservationCount
+                           + msg->baseGlonassObservationCount
+                           + msg->baseGalileoObservationCount
+                           + msg->baseQzsObservationCount
+                           + msg->baseBeidouObservationCount;
+    rtk_info_msg.roverObs = msg->roverGpsObservationCount
+                           + msg->roverGlonassObservationCount
+                           + msg->roverGalileoObservationCount
+                           + msg->roverQzsObservationCount
+                           + msg->roverBeidouObservationCount;
+    rtk_info_msg.baseEph = msg->baseGpsEphemerisCount
+                           + msg->baseGlonassEphemerisCount
+                           + msg->baseGalileoEphemerisCount
+                           + msg->baseQzsEphemerisCount
+                           + msg->baseBeidouEphemerisCount;
+    rtk_info_msg.roverEph = msg->roverGpsEphemerisCount
+                           + msg->roverGlonassEphemerisCount
+                           + msg->roverGalileoEphemerisCount
+                           + msg->roverQzsEphemerisCount
+                           + msg->roverBeidouEphemerisCount;
+    rtk_info_msg.baseAntcount = msg->baseAntennaCount; 
+    RTK_info_.pub.publish(rtk_info_msg);
+  }  
 }
 
 void InertialSenseROS::GPS_Info_callback(const gps_sat_t* const msg)
@@ -545,6 +599,8 @@ void InertialSenseROS::ublox_callback(uint8_t *buffer)
   
   inertial_sense::RTKCorrection msg;
   msg.correction_type = inertial_sense::RTKCorrection::RTK_CORRECTION_TYPE_UBLOX;
+  msg.header.stamp = ros::Time::now();
+  msg.header.frame_id = frame_id_;
   msg.data.resize(len);
   // copy the data buffer into the message
   for (int i = 0; i < len; i++)
@@ -556,8 +612,8 @@ void InertialSenseROS::ublox_callback(uint8_t *buffer)
 
 void InertialSenseROS::RTKCorrection_callback(const inertial_sense::RTKCorrectionConstPtr &msg)
 {
-  uint32_t len = (msg->data[4] << 8 | msg->data[5]) + 6;
-  // copy the data to a local buffer
+  uint32_t len = (msg->data[5] << 8 | msg->data[4]) + 6;
+  // copy the data to our local buffer
   for (int i =0; i < len; i++)
   {
     message_buffer_[i] = msg->data[i];

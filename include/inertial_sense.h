@@ -16,6 +16,7 @@
 #include "inertial_sense/GPSInfo.h"
 #include "inertial_sense/PreIntIMU.h"
 #include "inertial_sense/RTKCorrection.h"
+#include "inertial_sense/RTKInfo.h"
 #include "nav_msgs/Odometry.h"
 #include "std_srvs/Trigger.h"
 
@@ -104,6 +105,8 @@ private:
   rtk_state_t RTK_state_ = RTK_NONE;
   ros::Subscriber RTK_sub_;
   ros::Publisher RTK_pub_;
+  ros_stream_t RTK_info_;
+  void RTK_MISC_callback(const gps_rtk_misc_t * const msg);
   void RTKCorrection_callback(const inertial_sense::RTKCorrectionConstPtr& msg);
   
   ros::ServiceServer mag_cal_srv_;
