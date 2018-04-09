@@ -392,6 +392,7 @@ void InertialSenseROS::update()
       IMU_callback((dual_imu_t*) message_buffer_);
       break;
     case DID_GPS_NAV:
+	case DID_GPS_RTK_NAV:
       GPS_callback((gps_nav_t*) message_buffer_);
       break;
     case DID_GPS1_SAT:
