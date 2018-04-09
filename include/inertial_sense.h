@@ -14,45 +14,61 @@
 #include "sensor_msgs/FluidPressure.h"
 #include "inertial_sense/GPS.h"
 #include "inertial_sense/GPSInfo.h"
-#include "inertial_sense/DThetaVel.h"
+#include "inertial_sense/PreIntIMU.h"
 #include "nav_msgs/Odometry.h"
+#include "std_srvs/Trigger.h"
 
-# define GPS_UTC_OFFSET 315964782 // as of 2017
+# define GPS_UNIX_OFFSET 315964800 // GPS time started on 6/1/1980 while UNIX time started 1/1/1970 this is the difference between those in seconds
+# define LEAP_SECONDS 18 // GPS time does not have leap seconds, UNIX does (as of 1/1/2017 - next one is probably in 2020 sometime unless there is some crazy earthquake or nuclear blast) 
+# define UNIX_TO_GPS_OFFSET (GPS_UNIX_OFFSET - LEAP_SECONDS) 
 
 #define BUFFER_SIZE 2048
 
 
 class InertialSenseROS //: SerialListener
 {
+  typedef enum
+  {
+    NMEA_GPGGA = 0x01,
+    NMEA_GPGLL = 0x02,
+    NMEA_GPGSA = 0x04,
+    NMEA_GPRMC = 0x08,
+    NMEA_SER0 = 0x01,
+    NMEA_SER1 = 0x02
+  } NMEA_message_config_t;
+      
 public:
   InertialSenseROS();
   void callback(p_data_t* data);
   void update();
 
 private:
-
+  
+  void initialize_uINS();
+  template<typename T> void set_vector_flash_config(std::string param_name, uint32_t size, uint32_t offset);
+  template <typename T>  void set_flash_config(std::string param_name, uint32_t offset, T def);
+  void get_flash_config();
+  void reset_device();
+  void flash_config_callback(const nvm_flash_cfg_t* const msg);
   // Serial Port Configuration
   std::string port_;
   int baudrate_;
-  ros::Duration IMU_offset_;
-  bool first_IMU_message_ = true;
-  bool got_GPS_fix_ = false;
-  double GPS_to_week_offset_;
-
-  nvm_flash_cfg_t flash_cfg_;
+  
+  // Time sync variables
+  double INS_local_offset_ = 0.0;
+  bool got_first_message_ = false;
+  double GPS_towOffset_ = 0; // The offset between GPS time-of-week and local time on the uINS 
+  uint64_t GPS_week_ = 0;
 
   std::string frame_id_;
 
   // ROS Stream handling
   typedef struct
   {
-    bool stream_on;
-    int stream_rate;
+    bool enabled;
     ros::Publisher pub;
     ros::Publisher pub2;
   } ros_stream_t;
-
-  void request_data(uint32_t did, float update_rate);
 
   ros_stream_t INS_;
   void INS1_callback(const ins_1_t* const msg);
@@ -74,7 +90,12 @@ private:
   void baro_callback(const barometer_t* const msg);
 
   ros_stream_t dt_vel_;
-  void dtheta_vel_callback(const preintegrated_imu_t * const msg);
+  void preint_IMU_callback(const preintegrated_imu_t * const msg);
+  
+  ros::ServiceServer mag_cal_srv_;
+  ros::ServiceServer multi_mag_cal_srv_;
+  bool perform_mag_cal_srv_callback(std_srvs::Trigger::Request & req, std_srvs::Trigger::Response & res);
+  bool perform_multi_mag_cal_srv_callback(std_srvs::Trigger::Request & req, std_srvs::Trigger::Response & res);
 
 
   // Data to hold on to in between callbacks
@@ -92,6 +113,9 @@ private:
   is_comm_instance_t comm_;
   uint8_t message_buffer_[BUFFER_SIZE];
   serial_port_t serial_;
+  bool got_flash_config = false;
+  nvm_flash_cfg_t flash_; // local copy of flash config
 
 //  InertialSense inertialSenseInterface_;
 };
+
