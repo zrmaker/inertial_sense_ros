@@ -489,7 +489,8 @@ void InertialSenseROS::preint_IMU_callback(const preintegrated_imu_t * const msg
 
   preintIMU_msg.dt = msg->dt;
 
-  dt_vel_.pub.publish(preintIMU_msg);
+  if (dt_vel_.enabled)
+    dt_vel_.pub.publish(preintIMU_msg);
 }
 
 bool InertialSenseROS::perform_mag_cal_srv_callback(std_srvs::Trigger::Request &req, std_srvs::Trigger::Response &res)
