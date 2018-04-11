@@ -208,12 +208,13 @@ void InertialSenseROS::INS1_callback(const ins_1_t * const msg)
   odom_msg.pose.pose.position.x = msg->ned[0];
   odom_msg.pose.pose.position.y = msg->ned[1];
   odom_msg.pose.pose.position.z = msg->ned[2];
-
+  
   geometry_msgs::Vector3 lla_msg;
   lla_msg.x = msg->lla[0];
   lla_msg.y = msg->lla[1];
   lla_msg.z = msg->lla[2];
-  INS_.pub2.publish(lla_msg);
+  if (INS_.enabled) 
+    INS_.pub2.publish(lla_msg);
 }
 
 
@@ -396,7 +397,8 @@ void InertialSenseROS::GPS_Info_callback(const gps_sat_t* const msg)
     gps_info_msg.sattelite_info[i].sat_id = msg->sat[i].svId;
     gps_info_msg.sattelite_info[i].cno = msg->sat[i].cno;
   }
-  GPS_info_.pub.publish(gps_info_msg);
+  if (GPS_info_.enabled)
+    GPS_info_.pub.publish(gps_info_msg);
 }
 
 
@@ -422,7 +424,7 @@ void InertialSenseROS::mag_callback(const magnetometer_t* const msg, int mag_num
   mag_msg.magnetic_field.y = msg->mag[1];
   mag_msg.magnetic_field.z = msg->mag[2];
   
-  if(mag_number == 1)
+  if(mag_number == 1 && mag_.enabled)
   {
     mag_.pub.publish(mag_msg);
   }
@@ -453,7 +455,8 @@ void InertialSenseROS::baro_callback(const barometer_t * const msg)
   baro_msg.header.frame_id = frame_id_;
   baro_msg.fluid_pressure = msg->bar;
 
-  baro_.pub.publish(baro_msg);
+  if (baro_.enabled)
+    baro_.pub.publish(baro_msg);
 }
 
 void InertialSenseROS::preint_IMU_callback(const preintegrated_imu_t * const msg)
