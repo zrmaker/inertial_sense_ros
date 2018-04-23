@@ -193,6 +193,8 @@ void InertialSenseROS::get_flash_config()
     update();
   if ((ros::Time::now() - start).toSec() >= 3.0)
     ROS_FATAL("inertialsense: No response when requesting flash configuration from uINS on \"%s\", at %d baud", port_.c_str(), baudrate_);
+  
+  initialized_ = true;
 }
 
 void InertialSenseROS::flash_config_callback(const nvm_flash_cfg_t * const msg)
@@ -340,47 +342,51 @@ void InertialSenseROS::update()
   for (int i = 0; i < bytes_read; i++)
   {
     uint32_t message_type = is_comm_parse(&comm_, buffer[i]);
-    switch (message_type)
+    if (message_type == DID_FLASH_CONFIG)
+        flash_config_callback((nvm_flash_cfg_t*) message_buffer_);
+    
+    if (initialized_)
     {
-    case DID_NULL:
-      // no valid message yet
-      break;
-    case DID_FLASH_CONFIG:
-      flash_config_callback((nvm_flash_cfg_t*) message_buffer_);
-      break;
-    case DID_INS_1:
-      INS1_callback((ins_1_t*) message_buffer_);
-      break;
-    case DID_INS_2:
-      INS2_callback((ins_2_t*) message_buffer_);
-      break;
-
-    case DID_DUAL_IMU:
-      IMU_callback((dual_imu_t*) message_buffer_);
-      break;
-
-    case DID_GPS_NAV:
-      GPS_callback((gps_nav_t*) message_buffer_);
-      break;
-
-    case DID_GPS1_SAT:
-      GPS_Info_callback((gps_sat_t*) message_buffer_);
-      break;
-
-    case DID_MAGNETOMETER_1:
-      mag_callback((magnetometer_t*) message_buffer_, 1);
-      break;
-    case DID_MAGNETOMETER_2:
-      mag_callback((magnetometer_t*) message_buffer_, 2);
-      break;
-
-    case DID_BAROMETER:
-      baro_callback((barometer_t*) message_buffer_);
-      break;
-
-    case DID_PREINTEGRATED_IMU:
-      preint_IMU_callback((preintegrated_imu_t*) message_buffer_);
-      break;
+      switch (message_type)
+      {
+      case DID_NULL:
+        // no valid message yet
+        break;
+        
+      case DID_INS_1:
+        INS1_callback((ins_1_t*) message_buffer_);
+        break;
+      case DID_INS_2:
+        INS2_callback((ins_2_t*) message_buffer_);
+        break;
+        
+      case DID_DUAL_IMU:
+        IMU_callback((dual_imu_t*) message_buffer_);
+        break;
+        
+      case DID_GPS_NAV:
+        GPS_callback((gps_nav_t*) message_buffer_);
+        break;
+        
+      case DID_GPS1_SAT:
+        GPS_Info_callback((gps_sat_t*) message_buffer_);
+        break;
+        
+      case DID_MAGNETOMETER_1:
+        mag_callback((magnetometer_t*) message_buffer_, 1);
+        break;
+      case DID_MAGNETOMETER_2:
+        mag_callback((magnetometer_t*) message_buffer_, 2);
+        break;
+        
+      case DID_BAROMETER:
+        baro_callback((barometer_t*) message_buffer_);
+        break;
+        
+      case DID_PREINTEGRATED_IMU:
+        preint_IMU_callback((preintegrated_imu_t*) message_buffer_);
+        break;
+      }
     }
   }
 }

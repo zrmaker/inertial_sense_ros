@@ -115,6 +115,8 @@ private:
   serial_port_t serial_;
   bool got_flash_config = false;
   nvm_flash_cfg_t flash_; // local copy of flash config
+  
+  bool initialized_ = false;
 
 //  InertialSense inertialSenseInterface_;
 };
