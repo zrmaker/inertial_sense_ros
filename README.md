@@ -112,6 +112,8 @@ Topics are enabled and disabled using parameters.  By default, only the `ins/` t
        - 7 = airborne 2G
        - 8 = airborne 4G
        - 9 = wrist
+ * `~zero_lateral_velocity` (bool, default: false)
+    - set to true if your vehicle does not experience movement laterally - such as if the uINS is being used on a car or wheeled ground robot that cannot move laterally.
 
 **ASCII Output Configuration**
 * `~ser1_baud_rate` (int, default: 115200)
