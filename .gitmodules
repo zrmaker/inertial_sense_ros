@@ -1,3 +1,6 @@
 [submodule "lib/inertialsense_serial_protocol"]
 	path = lib/inertialsense_serial_protocol
 	url = https://github.com/inertialsense/inertialsense_serial_protocol.git
+[submodule "async_comm"]
+	path = lib/async_comm
+	url = git@github.com:dpkoch/async_comm.git

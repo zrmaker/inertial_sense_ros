@@ -5,7 +5,8 @@
 
 #include "ISComm.h"
 //#include "serial.h"
-#include "serialPortPlatform.h"
+//#include "serialPortPlatform.h"
+#include "async_comm/serial.h"
 
 #include "ros/ros.h"
 #include "ros/timer.h"
@@ -42,7 +43,7 @@ class InertialSenseROS //: SerialListener
 public:
   InertialSenseROS();
   void callback(p_data_t* data);
-  void update();
+  void update(uint32_t byte);
 
 private:
   
@@ -129,7 +130,7 @@ private:
 //  Serial* serial_;
   is_comm_instance_t comm_;
   uint8_t message_buffer_[BUFFER_SIZE];
-  serial_port_t serial_;
+  async_comm::Serial* serial_;
   bool got_flash_config = false;
   nvm_flash_cfg_t flash_; // local copy of flash config
 
