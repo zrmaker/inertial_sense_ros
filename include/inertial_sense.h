@@ -24,7 +24,7 @@
 # define LEAP_SECONDS 18 // GPS time does not have leap seconds, UNIX does (as of 1/1/2017 - next one is probably in 2020 sometime unless there is some crazy earthquake or nuclear blast) 
 # define UNIX_TO_GPS_OFFSET (GPS_UNIX_OFFSET - LEAP_SECONDS) 
 
-#define BUFFER_SIZE 2048
+#define BUFFER_SIZE 8192
 
 
 class InertialSenseROS //: SerialListener

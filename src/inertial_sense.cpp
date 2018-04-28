@@ -84,14 +84,14 @@ InertialSenseROS::InertialSenseROS() :
   {
     ROS_INFO("InertialSense: Configured as RTK Rover");
     RTK_state_ = RTK_ROVER;
-    set_flash_config(offsetof(nvm_flash_cfg_t, sysCfgBits), SYS_CFG_BITS_RTK_ROVER);
+    set_flash_config(offsetof(nvm_flash_cfg_t, RTKCfgBits), RTK_CFG_BITS_RTK_ROVER);
     RTK_sub_ = nh_.subscribe("RTK", 10, &InertialSenseROS::RTKCorrection_callback, this);
   }
   else if (RTK_base)
   {
     ROS_INFO("InertialSense: Configured as RTK Base");
     RTK_state_ = RTK_BASE;
-    set_flash_config(offsetof(nvm_flash_cfg_t, sysCfgBits), SYS_CFG_BITS_ENABLE_COM_MANAGER_PASS_THROUGH_UBLOX_SERIAL_0);
+    set_flash_config(offsetof(nvm_flash_cfg_t, RTKCfgBits), RTK_CFG_BITS_BASE_OUTPUT_GPS1_UBLOX_SER0);
     RTK_pub_ = nh_.advertise<inertial_sense::RTKCorrection>("RTK", 10);
   }
 
@@ -368,7 +368,7 @@ void InertialSenseROS::GPS_callback(const gps_nav_t * const msg)
 
 void InertialSenseROS::update()
 {
-  uint8_t buffer[512];
+  uint8_t buffer[BUFFER_SIZE];
   int bytes_read = serialPortReadTimeout(&serial_, buffer, 512, 1);
 
   for (int i = 0; i < bytes_read; i++)
