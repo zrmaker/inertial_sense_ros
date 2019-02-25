@@ -725,13 +725,13 @@ void InertialSenseROS::wheel_enc_callback(const sensor_msgs::JointStateConstPtr 
 
 void InertialSenseROS::configure_wheel_encoders()
 {
-  wheel_encoder_config_t wheel_encoder_config;
+  wheel_config_t wheel_encoder_config;
   std::vector<double> q_i2l, t_i2l;
   nh_private_.getParam("q_wheel_enc", q_i2l);
   nh_private_.getParam("t_wheel_enc", t_i2l);
   nh_private_.getParam("diameter", wheel_encoder_config.diameter);
   nh_private_.getParam("distance", wheel_encoder_config.distance);
-  IS_.SendData(DID_WHEEL_ENCODER_CONFIG, reinterpret_cast<uint8_t*>(&wheel_encoder_config), sizeof(wheel_encoder_config_t), 0);
+  IS_.SendData(DID_FLASH_CONFIG, reinterpret_cast<uint8_t*>(&wheel_encoder_config), sizeof(wheel_config_t), offsetof(nvm_flash_cfg_t, wheelConfig));
 }
 
 ros::Time InertialSenseROS::ros_time_from_week_and_tow(const uint32_t week, const double timeOfWeek)
