@@ -23,6 +23,7 @@
 #include "inertial_sense/GNSSEphemeris.h"
 #include "inertial_sense/GlonassEphemeris.h"
 #include "inertial_sense/GNSSObservation.h"
+#include "inertial_sense/GNSSObsVec.h"
 #include "nav_msgs/Odometry.h"
 #include "std_srvs/Trigger.h"
 #include "std_msgs/Header.h"
@@ -94,7 +95,7 @@ private:
   void GPS_pos_callback(const gps_pos_t* const msg);
   void GPS_vel_callback(const gps_vel_t* const msg);
   void GPS_raw_callback(const gps_raw_t* const msg);
-  void GPS_obs_callback(const obsd_t* const msg);
+  void GPS_obs_callback(const obs_t * const msg);
   void GPS_eph_callback(const eph_t* const msg);
   void GPS_geph_callback(const geph_t* const msg);
 
